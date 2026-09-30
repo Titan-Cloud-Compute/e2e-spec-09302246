@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
-  Param,
   Patch,
   Post,
   Req,
@@ -16,10 +15,9 @@ import {
 import type { Request, Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { SignupSchema } from './signup.schema';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { RequireAdmin } from './roles.guard';
+import { RequireAdmin, RolesGuard } from './roles.guard';
 import { Public } from './decorators/public.decorator';
 import type { SessionPayload } from './session.types';
 import {
@@ -64,16 +62,6 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post('signup')
-  @HttpCode(HttpStatus.CREATED)
-  async signup(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
-    const parsed = SignupSchema.parse(body);
-    const { user, token } = await this.authService.signup(parsed);
-    this.setSessionCookie(res, token);
-    return { id: user.id, email: user.email, role: user.role };
-  }
-
-  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
@@ -88,25 +76,6 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: Response): void {
     res.clearCookie(COOKIE_NAME, this.cookieOptions(0));
-  }
-
-  /**
-   * PUBLIC preview of a registration token's model entitlement, for the
-   * unauthenticated signup page: the "Preferred AI model" field is a static
-   * display of the model the registrant's token grants, so it needs to resolve
-   * that model before the account exists.
-   *
-   * Malformed tokens are rejected with 400; unknown / consumed / expired tokens
-   * answer 200 `{ valid: false, models: [] }`. Never returns user data.
-   */
-  @Public()
-  @Get('registration-token/:token')
-  @HttpCode(HttpStatus.OK)
-  async previewRegistrationToken(@Param('token') token: string) {
-    if (!/^[a-fA-F0-9]{48}$/.test((token ?? '').trim())) {
-      throw new BadRequestException('invalid registration token format');
-    }
-    return this.authService.previewRegistrationToken(token.trim());
   }
 
   @UseGuards(JwtAuthGuard)
@@ -167,9 +136,11 @@ export class AuthController {
   }
 
   /**
-   * Create an invite token a teammate can use to sign up.
+   * Create an invite token. Admin-only: the app is admin_only, so accounts
+   * are provisioned by administrators, never by self-registration.
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireAdmin()
   @Post('invite')
   @HttpCode(HttpStatus.CREATED)
   async invite(@Req() req: Request) {

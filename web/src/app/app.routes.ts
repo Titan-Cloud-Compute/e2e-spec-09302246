@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard, authGuard } from './shared/auth.guards';
 
 export const routes: Routes = [
   {
@@ -23,13 +24,12 @@ export const routes: Routes = [
   },
   {
     path: 'signup',
-    redirectTo: 'signup/1',
+    redirectTo: 'login',
     pathMatch: 'full'
   },
   {
     path: 'signup/:step',
-    loadComponent: () => import('./signup/signup.component').then(m => m.SignupComponent),
-    data: { hideSupportFooter: ['1'] }
+    redirectTo: 'login'
   },
   {
     path: 'terms',
@@ -47,6 +47,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./shared/layout.component').then(m => m.LayoutComponent),
+    canActivate: [authGuard],
     data: { rendersSupportFooterInLayout: true },
     children: [
       {
@@ -59,18 +60,22 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
+        canActivate: [adminGuard],
         loadComponent: () => import('./admin/admin.component').then(m => m.AdminComponent)
       },
       {
         path: 'admin/overview',
+        canActivate: [adminGuard],
         loadComponent: () => import('./admin/admin.component').then(m => m.AdminComponent)
       },
       {
         path: 'admin/users',
+        canActivate: [adminGuard],
         loadComponent: () => import('./admin/admin.component').then(m => m.AdminComponent)
       },
       {
         path: 'admin/app-settings',
+        canActivate: [adminGuard],
         loadComponent: () => import('./admin/admin.component').then(m => m.AdminComponent)
       },
     ]
