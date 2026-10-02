@@ -53,6 +53,21 @@ model User {
   tokensCreated  RegistrationToken[] @relation("CreatedTokens")
   tokensConsumed RegistrationToken[] @relation("ConsumedTokens")
   passwordResetTokens PasswordResetToken[]
+  todos     Todo[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// To-dos (owner-scoped task list)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Todo {
+  id        String   @id @default(cuid())
+  title     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
